@@ -8,15 +8,15 @@
 
 ​	**융합소프트웨어종합설계_1.md**
 
- 	1. Software Quality
- 	2. Software Quality and Process Quality
- 	3. Requirements Development
-     	1. Usecase Modeling
- 	4. Software Process & Sw Development Approach
- 	5. Project Planning - estimation
-     	1. estimation
-     	2. establish project plan
- 	6. Proejct Monitoring and Control
+1. Software Quality
+2. Software Quality and Process Quality
+3. Requirements Development
+   	1. Usecase Modeling
+4. Software Process & Sw Development Approach
+5. Project Planning - estimation
+   	1. estimation
+   	2. establish project plan
+6. Proejct Monitoring and Control
 
 ​	**융합소프트웨어종합설계_2.md**
 
