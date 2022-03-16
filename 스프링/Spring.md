@@ -1,4 +1,4 @@
-AOP (Aspect Oriented Programming)
+# AOP (Aspect Oriented Programming)
 
 관점 지향 프로그래밍이라고 불린다.
 
@@ -7,24 +7,6 @@ AOP (Aspect Oriented Programming)
 예를들어, 핵심적인 관점은 `핵심 비즈니스 로직`이고, 부가적인 관점은 로직을 실행하기 위해서 행해지는 `데이터베이스 연결, 로깅, 파일 입출력` 등을 예로 들 수 있다.
 
   
-
-# MVC 패턴
-
-MVC 패턴은 Model - View - Controller의 약자로 개발할 때 3가지 형태로 역할을 나누어 개발하는 방법론이다.
-
-<img src = "./img_basic/2.png">
-
-### Model
-
-어플리케이션이 무엇을 할 것인지를 정의하는 부분으로 DB와 연동하여 사용자가 입력한 `데이터`나 사용자에게 출력할 `데이터`를 다룹니다.
-
-## View
-
-사용자에게 시각적으로 보여주는 부분이다.
-
-## Controller
-
-Model이 데이터를 어떻게 처리할지를 알려주는 역할을 한다. 클라이언트가 보낸 데이터가 있으면 모델을 호출하기 전에 적절히 가공하고 모델을 호출한다. 그다음 모델의 업무가 수행 완료되면 그 결과를 가지고 View에게 전달한다. 
 
 
 
@@ -79,3 +61,25 @@ UI에 사용하는 데이터만 선택적으로 DTO를 만들어 전달한다. �
 - Getter/Setter 없음
 - Wrapping 된 순수한 데이터 객체
 - 엔티티에 직접 접근하지 않기때문에 엔티티가 변경되어도 DTO만 변경하면 된다
+
+
+
+# Test
+
+```java
+@BeforeEach
+void beforeEach() {
+    // 테스트 후에 해야할 일 
+}
+
+@AfterEach
+void afterEach() {
+	// 테스트 전에 해야할 일
+}
+
+// 동일한지
+Assertions.assertThat(result.size())isEqualTo(2);
+// 똑같은 결과가 들어있는지
+Assertions.assertThat(result).contain(member1, member2);
+```
+
