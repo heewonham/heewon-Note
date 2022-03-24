@@ -1041,37 +1041,282 @@ step 4: ModelView가 아닌 뷰 네임 반환 - 단순하고 실용적인 컨트
 
 
 
-로그
+# 05. 스프링 MVC - 구조 이해
 
-trace -> debug -> info -> warn -> error
+<img src = "./img_mvc1/14.png">
 
-로그의 레벨을 정할 수 있다.
-
-점점 등급이 높아짐
-
-trace 로그 다 볼꺼임
-
-운영시스템에서 보는 정보
-
-
-
-출력은 전부 다봄 
-
-디폴트가 info
+* FrontController -> DispatcherServlet
+  * MVC의 프론트 컨트롤러가 `디스패처 서블릿`이다.
+  * DispatcherServlet은 HttpServlet읠 상속받아 사용하고 서블릿으로 동작한다.
+    * `DispatcherServlet`  -> `FrameworkServlet` -> `HttpServletBean`  -> `HttpServlet`
+  * 스프링부트는 디스패처 서블릿을 서블릿으로 등록하면서 모든 경로(urlPatterns="/") 에 대해 매핑한다.
+* HandlerMappingMap -> HandlerMapping
+* MyHandlerAdapter -> HandlerAdapter
+* ModelView -> ModelAndView
+* viewResolver -> ViewResolver
+* MyView -> View
 
 
 
-문자열 처럼 + 할 수 있지만 연산을 함으로써 메모리를 사용하게 됨
+### 요청 흐름
 
-그렇기 때문에 파라미터를 넘기는 작업을 해야한다.
+서블릿이 호출되면 Httpservlet이 제공하는 service() 가 오버라이드 된 frameworkServlet의 service()가 호출되고 `DispatcherServlet.doDispatch()`가 호출된다.
+
+1. 핸들러 조회: 핸들러 매핑을 통해 요청 URL에 매핑된 핸들러(컨트롤러)를 조회한다.
+
+2. 핸들러 어댑터 조회: 핸들러를 실행할 수 있는 핸들러 어댑터를 조회한다.
+3. 핸들러 어댑터 실행: 핸들러 어댑터를 실행한다.
+4. 핸들러 실행: 핸들러 어댑터가 실제 핸들러를 실행한다.
+5. ModelAndView 반환: 핸들러 어댑터는 핸들러가 반환하는 정보를 ModelAndView로 변환해서
+반환한다.
+6. viewResolver 호출: 뷰 리졸버를 찾고 실행한다.
+JSP의 경우: InternalResourceViewResolver 가 자동 등록되고, 사용된다.
+7. View 반환: 뷰 리졸버는 뷰의 논리 이름을 물리 이름으로 바꾸고, 렌더링 역할을 담당하는 뷰 객체를
+반환한다.
+JSP의 경우 InternalResourceView(JstlView) 를 반환하는데, 내부에 forward() 로직이 있다.
+8. 뷰 렌더링: 뷰를 통해서 뷰를 렌더링 한다
 
 
 
-최근에는 로그가 100메가 넘으면 분할한다든지 혹은 압축해서 백업하는 기능이 추가된다.
+### 스프링부트가 자동 등록하는 핸들러 매핑과 어댑터
 
-성능도 더 좋은데 내부 버퍼링 기능이 있어서
+순서대로 찾고 없으면 다음 순서로 넘어간다.
 
-버퍼링이 성능최적화에 맞춰져있어서 한꺼번에 출력이 모여도 성능을 극한으로 해줌 
+#### HandlerMapping(핸들러 매핑)
+
+0 : `RequestMappingHandlerMapping` - 애노테이션@ 기반의 컨트롤러인 `@RequestMapping`에서 사용한다.
+
+1 : `BeanNameUrlHandlerMapping` - 스프링 빈의 이름으로 핸들러를 찾는다.
+
+
+
+#### HandlerAdapter(핸들러 어댑터)
+
+handlerAdapter의 supports()를 순서대로 호출해 지원대상을 찾고 어댑터를 실행하면서 핸들러 정보를 함께 넘겨준다. 그리고 그 결과를 반환한다. 
+
+0 : `RequestMappingHandlerAdapter` : 애노테이션@ 기반의 컨트롤러인 @RequestMapping에서 사용
+
+1 : `HttpRequestHandlerAdapter` : HttpRequestHandler 처리
+
+2 : `SimpleControllerHandlerAdapter` : Controller 인터페이스(애노테이션X, 과거에 사용)에서 처리
+
+
+
+예를들어,,,
+
+```java
+@Component("/springmvc/old-controller")
+public class OldController implements Controller {
+	...
+}
+```
+
+* 핸들러 매핑 - > `BeanNameUrlHandlerMapping` 실행을 통해 OldController 반환
+* 핸들러 어댑터 -> `SimpleControllerHandlerAdapte`을 통해 Controller 인터페이스를 찾고 OldController를 내부에서 실행
+
+
+
+대부분의 핸들러 매핑과 어댑터는 `RequestMappingHandlerAdapter` , `RequestMappingHandlerMapping` 으로 사용한다.
+
+
+
+### 뷰리졸버
+
+스프링부트는 `InternalResourceViewResolver` 라는 뷰 리졸버를 자동으로 등록하는데, 이때 application.properties 에 등록한 `spring.mvc.view.prefix`, `spring.mvc.view.suffix` 설정 정보를 사용해서 등록한다.
+
+```java
+// application.properties
+
+spring.mvc.view.prefix=/WEB-INF/views/
+spring.mvc.view.suffix=.jsp
+```
+
+
+
+#### 스프링부트가 자동 등록하는 뷰 리졸버
+
+1 : `BeanNameViewResolver` - 빈 이름으로 뷰를 찾아서 반환한다.
+
+2 : `InternalResourceViewResolver` - JSP를 처리할 수 있는 뷰를 반환한다.
+
+* JSP처럼 포워드 `forward ()`를 호출해서 처리할 수 있는 경우에 사용한다.
+* 만약 JSTL 라이브러리가 있다면, InternalResourceView를 상속받은 JstView를 반환한다. JstView는 JSTL 태그 사용시 약간의 부가 기능이 추가된다.
+
+
+
+* JSP를 제외한 나머지 뷰 템플릿은 forward() 과정 없이 바로 렌더링 된다.
+* Thymeleaf 뷰 템플릿은 사용하면 `ThymeleafViewResolver`를 등록해야하지만 최근에는 라이브러리만 추가하면 스프링 부트가 자동으로 등록해준다.
+
+
+
+### @RequestMapping
+
+```JAVA
+@Controller
+public class SpringMemberFormControllerV1 {
+    
+    @RequestMapping("/springmvc/v1/members/new-form")
+    public ModelAndView process() {
+        return new ModelAndView("new-form");
+    }
+}
+```
+
+`@Controller` : 내부의 `@Component` 애노테이션으로 인해 컴포넌트 스캔의 대상이 되고 스프링 빈으로 등록된다. 스프링 MVC에서는 애노테이션 기반 컨트롤러로 인식한다.
+
+`@RequestMapping` : 요청 정보를 매핑하고 해당 URL이 호출되면 이 메소드가 호출된다.
+
+`ModelAndView` : 모델과 뷰 정보를 담아서 반환한다.
+
+* `RequestMappingHandlerMapping`은 클래스 레벨에 `@Controller` 또는 `@RequestMapping`가 붙어있는 경우 매핑 정보로 인식한다.
+
+
+
+예시 : 
+
+```java
+@Controller
+public class SpringMemberSaveControllerV1 {
+    private MemberRepository memberRepository = MemberRepository.getInstance();
+ 
+    @RequestMapping("/springmvc/v1/members/save")
+    public ModelAndView process(HttpServletRequest request, HttpServletResponse response) {
+        
+        String username = request.getParameter("username");
+        int age = Integer.parseInt(request.getParameter("age"));
+ 
+        Member member = new Member(username, age);
+        memberRepository.save(member);
+ 
+        ModelAndView mv = new ModelAndView("save-result");
+        mv.addObject("member", member);
+ 
+        return mv;
+    }
+}
+```
+
+* @RequestMapping -> @GetMapping , @PostMapping 
+  * @RequestMapping(value = "/new-form", method = RequestMethod.GET)
+* Model 도입
+* ViewName 직접 반환 : 논리 이름을 반환할 수 있다.
+* @RequestParam을 사용 : request.getParameter() 과 거의 비슷 
+
+```java
+@Controller
+@RequestMapping("/springmvc/v3/members")
+public class SpringMemberControllerV3 {
+    private MemberRepository memberRepository = MemberRepository.getInstance();
+
+    @PostMapping("/save")
+    public String save(@RequestParam("username") String username, @RequestParam("age") int age, Model model) {
+
+        Member member = new Member(username, age);
+        memberRepository.save(member);
+        
+        model.addAttribute("member", member);
+        
+        return "save-result";
+    }
+}
+```
+
+
+
+# 06. 스프링 MVC 기본기능
+
+* 스프링 부트에 `Jar`을 사용하면 `/resource/static/index.html` 를 넣으면 welcome 페이지로 처리한다.
+
+
+
+## 1 ) 로그 
+
+스프링 부트 라이브러리를 사용하면 `Spring-boot-starter-logging` 함께 포함되고 사용할 수 있다. slf4j는 인터페이스로 그 구현체로 Logback 같은 라이브러리를 선택하면 된다. 대부분은 이것을 사용한다.
+
+* Slf4j :  http://www.slf4j.org
+* Logback :  http://logback.qos.ch
+* 스프링 부트가 제공하는 로그 기능 : https://docs.spring.io/spring-boot/docs/current/reference/html/spring-bootfeatures.html#boot-features-logging
+
+
+
+##### 로그 선언
+
+```java
+private Logger log = LoggerFactory.getLogger(getClass());
+private static final Logger log = LoggerFactory.getLogger(Xxx.class)
+```
+
+##### 롬복사용
+
+```java
+@Slf4j : 롬복 사용 가능
+```
+
+##### 로그 호출
+
+```java
+	log.trace("trace log={}", name);
+ 	log.debug("debug log={}", name);
+ 	log.info(" info log={}", name);
+ 	log.warn(" warn log={}", name);
+ 	log.error("error log={}", name);
+```
+
+
+
+> 참고 
+>
+> @RestController
+>
+> @Controller는 반환값이 String이면 뷰 이름으로 인식하고 뷰를 찾아 렌더링한다.
+>
+> @RestController는 반환값으로 뷰를 찾는게 아니라 `Http 메시지 바디`에 바로 입력한다. 
+
+
+
+로그는 `시간, 로그 레벨, 프로세스 ID, 스레드 명, 클래스 명, 로그 메세지` 가 함께 출력된다.
+
+로그 레벨은 : trace -> debug -> info -> warn -> error 순이다.
+
+* 개발 서버는 debug 호출하고, 운영서버는 info 출력한다.
+* trace 로그로 설정하면 trace, debug, info, warn, error를 다 볼 수 있다.
+* System.out.println은 레벨에 관계없이 모두 다 볼 수 있다.
+* dafault는 info로 info, warn, error를 볼 수 있다.
+
+
+
+#### 로그레벨 설정
+
+```java
+// application.properties
+// 전체 로그 레벨 설정(기본 info)
+logging.level.root=info
+
+//hello.springmvc 패키지와 그 하위 로그 레벨 설정
+logging.level.hello.springmvc=debug
+```
+
+
+
+로그를 `log.debug("data="+data)` 와 같이 문자열 처럼 연산할 수 있지만 연산을 함으로써 메모리를 사용하게 된다.
+
+그렇기 때문에 파라미터를 넘기는 작업을 해야한다. 즉, `log.debug("data={}", data)` 을 사용한다.
+
+* 만약 로그 출력 레벨을 info로 설정했을 경우 debug로는 출력되지 않는다. 
+
+
+
+#### 로그 장점
+
+1. 스레드 정보, 클래스 정보처럼 부가 정보를 함께 볼 수 있다.
+2. 로그 레벨에 따라 개발서버에서 로그를 출력하고, 운영서버에서는 출력되지 않게 조절할 수 있다.
+3. println처럼 콘솔에만 출력하는게 아니라 `파일, 네트워크` 등에 별도 위치에 남길 수 있다.
+4. 파일로 남길 때는 일별 혹은 특정 용량에 따라 로그 분할이 가능하다. 최근에는 로그가 100MB 넘으면 분할하거나 압축해서 백업하는 기능이 추가되었다.
+5. 내부 버퍼링 기능이 있어서 버퍼링 최적화에 따라 한꺼번에 출력이 모여 성능 측면에서도 좋다. (그 외 멀티스레드 등)
+
+
+
+## 2 ) 요청 매핑
 
 
 

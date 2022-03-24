@@ -91,3 +91,33 @@ new FieldError("item", "price", item.getPrice(), false, null, null, "가격은 1
 ```
 
 설정해둬야 한다.
+
+
+
+파일은 보통 데이터베이스에 저장하지 않는다. 스토리지에 저장하고
+
+데이터베이스에는 파일이 저장된 경로만 저장한다.  경로의 fullpath보다 상대 경로만 저장한다. 
+
+
+
+헤더없이 보내면 다운이 안된다.
+
+```java
+// 추가
+String contentDisposition = "attachment; filename\""+uploadFileName+"\"";
+
+
+return ResponseEntity.ok()
+        .body(resource);
+```
+
+
+
+파일명이 한글, 특수문자 깨지지 않기 위해서 추가해야한다.
+
+```java
+        String encodeUploadFileName = UriUtils.encode(uploadFileName, StandardCharsets.UTF_8);
+        String contentDisposition = "attachment; filename\""+encodeUploadFileName+"\"";
+
+```
+
