@@ -121,3 +121,47 @@ return ResponseEntity.ok()
 
 ```
 
+
+
+엔티티를 직접 노출할 경우 
+
+-> 지연로딩의 경우에는 실제 엔티티대신 프록시가 존재하고 jackson 라이브러리는 기본적으로 이 프록시 객체의 json을 알지 못하기 때문에 예외가 발생한다.
+
+그러므로 Hibernate5Module을 설치해야한다.
+
+Hibernate5Module은 기본적으로 초기화된 프록시 객체만 노출한다. 초기화하지 않은 객체는 노출하지 않는데 설정을 바꾸면 모든 객체를 강제로 가져올 수 있다.
+
+```java
+	@Bean
+	Hibernate5Module hibernate5Module(){
+		Hibernate5Module hibernate5Module = new Hibernate5Module();
+        Hibernate5Module.configure(Hibernate5Module.Feature.FORCE_LAZY_LOADING, true);
+		return hibernate5Module;
+	}
+```
+
+
+
+옵션을 설정하지 않고 원하는 값을 가져오는 방법은
+
+반환하기 전에 강제로 초기화를 시켜는 방법이다.
+
+```java
+    @GetMapping("/api/v1/simple-orders")
+    public List<Order> ordersV1(){
+        List<Order> all = orderRepository.findAllByString(new OrderSearch());
+        for (Order order : all) {
+            order.getMember().getName(); // 강제 초기화
+            order.getDelivery().getAddress(); // 강제 초기화
+        }
+        return all;
+    }
+```
+
+
+
+V3는 재사용성이 높지만
+
+V4는 재사용성은 낮다. 하지만 성능 최적화로는 더 좋다. 그리고 화면이 바뀌면 바꿔야하는 단점을 가지고 있다. 
+
+애플리케이션 전체 관점에서 보았을 때 - 성능이 엄청 차이 나지 않는다.
