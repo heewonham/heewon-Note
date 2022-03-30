@@ -1883,6 +1883,76 @@ ReturnValueHandler 중 http body를 그대로 처리하는 경우 http 메세지
 
 
 
+### ArgumentResolver - Login 구현
+
+```java
+@GetMapping("/")
+public String homeLoginV3ArgumentResolver(@Login Member loginMember, Model model) {
+	// ...
+}
+```
+
+@Login 애노테이션을 만들어서 직접 만든 ArgumentResolver가 동작되도록 만든다.
+
+##### @Login 애노테이션 생성
+
+```java
+@Target(ElementType.PARAMETER) // 파라미터에만 사용
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Login {
+}
+```
+
+##### LoginMemberArgumentResolver 생성
+
+```java
+@Slf4j
+public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolver {
+
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        log.info("supportsParameter 실행");
+        // @Login 애노테이션이 있으면서 Member 타입인 경우
+        boolean hasLoginAnnotation = parameter.hasParameterAnnotation(Login.class);
+        boolean hasMemberType = Member.class.isAssignableFrom(parameter.getParameterType());
+        
+        return hasLoginAnnotation && hasMemberType;
+ }
+    
+    // 컨트롤러 호출 직전 호출되어 파라미터 정보를 생성
+    // 세션에 있는 로그인 정보 member을 반환해준다.
+    @Override
+    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest,
+WebDataBinderFactory binderFactory) throws Exception {
+        log.info("resolveArgument 실행");
+        HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
+        HttpSession session = request.getSession(false);
+ 
+        if (session == null) {
+            return null;
+        }
+        
+        return session.getAttribute(SessionConst.LOGIN_MEMBER);
+    }
+}
+```
+
+##### WebMvcConfigurer 설정 추가
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(new LoginMemberArgumentResolver());
+    }
+    //...
+}
+```
+
+
+
 201p
 
 프로듀서 = 컨텐트 타입
