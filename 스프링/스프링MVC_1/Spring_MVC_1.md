@@ -1311,7 +1311,7 @@ logging.level.hello.springmvc=debug
 ##### @RestController
 
 * @Controller는 반환값이 String이면 뷰 이름으로 인식하고 뷰를 찾아 렌더링한다.
-* @RestController는 반환값으로 뷰를 찾는게 아니라 `Http 메시지 바디`에 바로 입력한다. 
+* @RestController는 반환값으로 뷰를 찾는게 아니라 `Http 메시지 바디`에 바로 입력한다. 이름 그대로 Rest API를 만들 때 사용하는 컨트롤러이다.
 
 
 
@@ -1423,7 +1423,7 @@ public class RequestHeaderController {
 
 
 
-## HTTP 요청 데이터 조회
+## 3) HTTP 요청 데이터 조회
 
 클라이언트에서 서버로 요청 데이터를 전달하는 방법 3가지
 
@@ -1670,17 +1670,290 @@ public String requestBodyJsonV4(HttpEntity<HelloData> httpEntity) {
 
 
 
+## 4 ) HTTP 응답
+
+응답 데이터를 만드는 방법은 크게 3가지이다.
+
+* 정적 리소스 : 웹 브라우저에 HTML, css, js 제공 
+  * `/static`, `/public`, `/resources`, `META-INF/resources` path에 있는 정적 리소스를 제공한다.
+  * `src/main/resources` 다음 디렉토리에 리소스를 넣어두면 스프링부트가 정적 리소스로 서비스를 제공한다.
+  * 예를 들어, src/main/resources/static/basic/hello-form.html 인 경우
+  * http://localhost:8080/basic/hello-form.html 을 실행하면 된다.
+* 뷰 템플릿 사용 : 뷰 템플릿을 거쳐서 HTML이 생성된다. `동적인 HTML`
+* HTTP 메세지 사용 : API를 제공하는 경우 데이터를 전달해야하므로 메세지 바디에 JSON과 같은 형식으로 데이터를 실어보낸다.
 
 
-168
+
+### 뷰 템플릿
+
+```java
+@Controller
+public class ResponseViewController {
+ 
+    @RequestMapping("/response-view-v2")
+    public String responseViewV2(Model model) {
+        model.addAttribute("data", "hello!!");
+        return "response/hello";
+    }
+}
+```
+
+##### String 반환
+
+@ResponseBody 가 `없을` 경우
+
+* response/hello로 뷰 리졸버 실행해서 뷰 찾고 렌더링
+* template/response/hello.html 실행
+
+@ResponseBody 가 `있을` 경우
+
+* 뷰 리졸버를 실행하지 않고 response/hello 를 메세지 바디에 직접 입력
 
 
 
-아규먼트리졸버는 아규먼트를 찾는것이고
+```java
+@RequestMapping("/response/hello")
+public void responseViewV3(Model model) {
+    model.addAttribute("data", "hello!!");
+}
+```
 
-아규먼트 중에서 http body를 그대로 처리하는 것들은 http 컨버터가 처리해줌
+##### void 반환
+
+* HttpServletResponse, OutputStream(Writer) 같은 메세지 바디 처리하는 파라미터가 없으면 `요청 URL을 참고해서 논리 뷰 이름으로 사용`
+* 이 방식은 명시성이 떨어지고 딱 맞는 경우가 없어서 권장하지 않는다.
 
 
+
+### HTTP 메세지 body
+
+`@ResponseBody` or `HttpEntity` 를 사용하면 HTTP 메세지 바디에 직접 응답 데이터를 출력할 수 있다.
+
+
+
+> 참고 :
+>
+> ```java
+> // build.gradle
+> implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+> ```
+>
+> * 추가하면 스프링은 로 ThymeleafViewResolver 와 필요한 스프링 빈들을 등록한다.
+>
+> 기본 값은 이렇게 되었고 만약 변경이 필요하다면 필요할 때 설정을 변경한다.
+>
+> ```java
+> // application.properties
+> spring.thymeleaf.prefix=classpath:/templates/
+> spring.thymeleaf.suffix=.html
+> ```
+>
+> [타임리프 관련 공식사이트](> https://docs.spring.io/spring-boot/docs/2.4.3/reference/html/appendix-applicationproperties.html#common-application-properties-templating)
+
+
+
+#### String
+
+1. `HttpServletResponse` 객체를 통해 메세지 전달
+
+```java
+@GetMapping("/response-body-string-v1")
+public void responseBodyV1(HttpServletResponse response) throws IOException {
+    response.getWriter().write("ok");
+}
+```
+
+2. HttpEntity를 상속받은 `ResponseEntity` 를 통해 응답코드와 메세지 전달
+
+```java
+@GetMapping("/response-body-string-v2")
+public ResponseEntity<String> responseBodyV2() {
+    return new ResponseEntity<>("ok", HttpStatus.OK);
+}
+```
+
+3. `@ResponseBody`를 사용해 넣는다.
+
+```java
+@ResponseBody
+@GetMapping("/response-body-string-v3")
+public String responseBodyV3() {
+    return "ok";
+}
+```
+
+
+
+#### JSON
+
+1. `ResponseEntity`를 반환한다. 메세지 컨버터를 통해 JSON형식으로 변환되어 반환된다.
+
+```java
+@GetMapping("/response-body-json-v1")
+public ResponseEntity<HelloData> responseBodyJsonV1() {
+    HelloData helloData = new HelloData();
+    helloData.setUsername("userA");
+    helloData.setAge(20);
+    
+    return new ResponseEntity<>(helloData, HttpStatus.OK);
+}
+```
+
+2. `@ResponseBody`를 통해 반환할 수 있다. 하지만 HTTP 응답코드를 설정하기 위해서는 `@ResponseStatus(HttpStatus.Ok)` 를 추가 해야한다. (또한 애노테이션이기 때문에 동적으로 변환할수 없다.)
+
+
+
+## HTTP 메시지 컨버터란?
+
+HTTP 메시지 컨버터는 JSON 데이터를 메세지 바디에 직접 읽거나 쓰는 경우 사용된다. 
+
+요청 - @RequestBody, HttpEntity, 응답 - @ResponseBody, HttpEntity 를 사용하면 body에 문자 내용을 직접반환하게 되는데 이때는 `viewResolver` 대신 `HttpMessageConverter`가 동작하게 된다.
+
+* 기본 문자는 `StringHttpMessageConverter` 실행
+* 객체는 `MappingJackson2HttpMessageConverter` 실행
+
+응답의 경우에는 `HTTP Accept 헤더와 서버 컨트롤러 반환 타입 정보` 둘을 조합해 메세지 컨버터가 선택된다.
+
+
+
+### 스프링 부트 기본 메시지 컨버터
+
+0 = `ByteArrayHttpMessageConverter`
+
+* 클래스 타입 `byte []`
+* 미디어 타입 `*/*`
+* 요청 예) @RequestBody byte[] data
+* 응답 예) @ResponseBody return byte[], 미디어타입 application/octet-stream
+
+1 = `StringHttpMessageConverter `
+
+* 클래스 타입 `String`
+* 미디어 타입 `*/*`
+* 요청 예) @RequestBody String data
+* 응답 예) @ResponseBody return "ok" , 미디어타입 text/plain
+
+2 = `MappingJackson2HttpMessageConverter`
+
+* 클래스 타입 `객체` or `HashMap`
+* 미디어 타입 `application/json`
+* 요청 예) @RequestBody HelloData data
+* 응답 예) @ResponseBody return helloData, 미디어타입application/json 관련
+
+
+
+<img src = "./img_mvc1/15.png">
+
+#### ArgumentResolver
+
+다양한 파라미터들을 정제해주는 역할을 수행한다.
+
+예를 들어, HttpServletRequest, Model, @RequestParam, @ModelAttribute, @RequestBody, HttpEntity 등 
+
+애노테이션 기반 컨트롤러를 처리하는 `RequestMappingHandlerAdaptor` 는 바로 이 `ArgumentResolver` 를 호출해서 컨트롤러(핸들러)가 필요로 하는 다양한 파라미터의 값(객체)을 생성한다.
+
+[가능한 파라미터 목록](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-annarguments)
+
+#### ReturnValueHandler
+
+ArgumentResolver와 비슷한데 이것은 응답 값을 변환하고 처리한다.
+
+예) ModelAndView , @ResponseBody , HttpEntity , String 등 처리
+
+[가능한 응답값 목록]( https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-annreturn-types)
+
+
+
+이 중 메세지 컨버터는 ArgumentResolver, ReturnValueHandler 에 속해있다.
+
+##### 요청
+
+ArgumentResolver 중 http body를 그대로 처리하는 것들은 http 메세지 컨버터가 처리해 준다.
+
+* @RequestBody, HttpEntity
+
+##### 응답
+
+ReturnValueHandler 중 http body를 그대로 처리하는 경우 http 메세지 컨버터를 호출해 응답 결과를 만든다.
+
+* @ResponseBody, HttpEntity
+
+> @RequestBody @ResponseBody 가 있으면, RequestResponseBodyMethodProcessor (ArgumentResolver) 
+>
+> HttpEntity 가 있으면 HttpEntityMethodProcessor (ArgumentResolver)를 사용
+
+
+
+### ArgumentResolver - Login 구현
+
+```java
+@GetMapping("/")
+public String homeLoginV3ArgumentResolver(@Login Member loginMember, Model model) {
+	// ...
+}
+```
+
+@Login 애노테이션을 만들어서 직접 만든 ArgumentResolver가 동작되도록 만든다.
+
+##### @Login 애노테이션 생성
+
+```java
+@Target(ElementType.PARAMETER) // 파라미터에만 사용
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Login {
+}
+```
+
+##### LoginMemberArgumentResolver 생성
+
+```java
+@Slf4j
+public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolver {
+
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        log.info("supportsParameter 실행");
+        // @Login 애노테이션이 있으면서 Member 타입인 경우
+        boolean hasLoginAnnotation = parameter.hasParameterAnnotation(Login.class);
+        boolean hasMemberType = Member.class.isAssignableFrom(parameter.getParameterType());
+        
+        return hasLoginAnnotation && hasMemberType;
+ }
+    
+    // 컨트롤러 호출 직전 호출되어 파라미터 정보를 생성
+    // 세션에 있는 로그인 정보 member을 반환해준다.
+    @Override
+    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest,
+WebDataBinderFactory binderFactory) throws Exception {
+        log.info("resolveArgument 실행");
+        HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
+        HttpSession session = request.getSession(false);
+ 
+        if (session == null) {
+            return null;
+        }
+        
+        return session.getAttribute(SessionConst.LOGIN_MEMBER);
+    }
+}
+```
+
+##### WebMvcConfigurer 설정 추가
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(new LoginMemberArgumentResolver());
+    }
+    //...
+}
+```
+
+
+
+201p
 
 프로듀서 = 컨텐트 타입
 
