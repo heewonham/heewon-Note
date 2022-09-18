@@ -1594,6 +1594,7 @@ public void requestBodyStringV2(InputStream inputStream, Writer responseWriter)t
      * 메세지 바디에 직접 반환한다. view를 사용하지 않는다.
      * return new ResponseEntity<String>("Hello World", responseHeaders, 
        HttpStatus.CREATED)
+* `스프링 MVC 내부에서 HTTP 메시지 바디를 읽어서 문자나 객체로 변환해서 전달해주는데 이때 메세지 컨버터 (HttpMessageConverter)라는 기능을 사용한다.` 
 
 ```java
 @PostMapping("/request-body-string-v3")
@@ -1852,6 +1853,7 @@ HTTP 메시지 컨버터는 JSON 데이터를 메세지 바디에 직접 읽거�
 애노테이션 기반 컨트롤러를 처리하는 `RequestMappingHandlerAdaptor` 는 바로 이 `ArgumentResolver` 를 호출해서 컨트롤러(핸들러)가 필요로 하는 다양한 파라미터의 값(객체)을 생성한다.
 
 [가능한 파라미터 목록](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-annarguments)
+* `handlerMethodArgumentResolver` 의 supportsParameter()를 호출해서 파라미터 지원하는지 체크하고, 지원하면 resolveArgument를 호출해 실체 객체를 생성한다`
 
 #### ReturnValueHandler
 
@@ -1938,7 +1940,12 @@ WebDataBinderFactory binderFactory) throws Exception {
 ```
 
 ##### WebMvcConfigurer 설정 추가
+스프링은 다음을 모두 인터페이스로 제공한다. 따라서 필요하면 언제든지 기능을 확장할 수 있다. HandlerMethodArgumentResolver
+HandlerMethodReturnValueHandler
+HttpMessageConverter
 
+만약, 확장이 필요할 경우, `WebMvcConfigurer`를 상속받아 스프링 빈으로 등독하면 된다.
+	
 ```java
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
